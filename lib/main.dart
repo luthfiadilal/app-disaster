@@ -6,7 +6,9 @@ import 'views/auth/login_screen.dart';
 import 'views/auth/register_screen.dart';
 import 'views/screens/post_screen.dart'; // Keeping this for reference
 
+import 'package:latlong2/latlong.dart';
 import 'views/home/home_screen.dart';
+import 'views/reports/create_report_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -35,6 +37,17 @@ class MyApp extends StatelessWidget {
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
           '/home': (context) => const HomeScreen(),
+        },
+        onGenerateRoute: (settings) {
+          if (settings.name == '/create-report') {
+            final args = settings.arguments as LatLng;
+            return MaterialPageRoute(
+              builder: (context) {
+                return CreateReportScreen(point: args);
+              },
+            );
+          }
+          return null;
         },
       ),
     );

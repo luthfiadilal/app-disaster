@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../models/disaster_category_model.dart';
 
 class ApiService {
   final Dio _dio = Dio();
@@ -79,13 +80,54 @@ class ApiService {
     }
   }
 
-  // Get Posts (Keeping existing method for reference, can be removed if unused)
+  // Get Categories
+  Future<List<DisasterCategory>> getCategories() async {
+    try {
+      final response = await _dio.get('/disaster/categories');
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'];
+        return data.map((json) => DisasterCategory.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      throw Exception('Failed to load categories: $e');
+    }
+  }
+
+  // Get Posts (Restored)
   Future<List<dynamic>> getPosts() async {
     try {
       final response = await _dio.get('/posts');
       return response.data;
     } catch (e) {
       throw Exception('Failed to load posts: $e');
+    }
+  }
+
+  // Create Disaster Report
+  Future<bool> createDisasterReport(
+    Map<String, dynamic> data,
+    List<String> imagePaths,
+  ) async {
+    try {
+      final formData = FormData.fromMap(data);
+
+      for (var path in imagePaths) {
+        formData.files.add(
+          MapEntry(
+            'images[]', // Array key for multiple images
+            await MultipartFile.fromFile(path),
+          ),
+        );
+      }
+
+      final response = await _dio.post('/disaster', data: formData);
+
+      return response.statusCode == 200 || response.statusCode == 201;
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to create report: $e',
+      );
     }
   }
 }
