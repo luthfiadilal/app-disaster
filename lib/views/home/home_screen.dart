@@ -105,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isPickingLocation ? 'Pick Location' : 'Disaster GIS'),
+        title: Text(_isPickingLocation ? 'Pick Location' : 'ZONARA'),
         backgroundColor: _isPickingLocation ? Colors.green : Colors.white,
         elevation: 1,
         iconTheme: IconThemeData(
@@ -232,7 +232,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate:
+                    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                 userAgentPackageName: 'com.example.app_disaster_gis',
               ),
               if (_hasLocation)

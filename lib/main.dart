@@ -10,6 +10,8 @@ import 'package:latlong2/latlong.dart';
 import 'views/home/home_screen.dart';
 import 'views/reports/create_report_screen.dart';
 
+import 'views/splash/splash_screen.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -32,8 +34,9 @@ class MyApp extends StatelessWidget {
           useMaterial3: true,
           scaffoldBackgroundColor: Colors.white,
         ),
-        initialRoute: '/login',
+        initialRoute: '/splash',
         routes: {
+          '/splash': (context) => const SplashScreen(),
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
           '/home': (context) => const HomeScreen(),
