@@ -139,13 +139,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     accountEmail: Text(user?.email ?? 'email@example.com'),
                     currentAccountPicture: CircleAvatar(
                       backgroundColor: Colors.white,
-                      child: Text(
-                        (user?.fullName ?? 'U').substring(0, 1).toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 24,
-                          color: Colors.blueAccent,
-                        ),
-                      ),
+                      backgroundImage:
+                          user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
+                          ? NetworkImage(user.avatarUrl!)
+                          : null,
+                      child: user?.avatarUrl == null || user!.avatarUrl!.isEmpty
+                          ? Text(
+                              (user?.fullName ?? 'U')
+                                  .substring(0, 1)
+                                  .toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 24,
+                                color: Colors.blueAccent,
+                              ),
+                            )
+                          : null,
                     ),
                   ),
                   ListTile(
@@ -173,11 +181,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                     ListTile(
-                      leading: const Icon(Icons.category),
+                      leading: const Icon(Icons.category, color: Colors.orange),
                       title: const Text('Manajemen Kategori'),
                       onTap: () {
-                        // Navigate to Manajemen Kategori
                         Navigator.pop(context);
+                        Navigator.pushNamed(context, '/manage-categories');
                       },
                     ),
                     ListTile(
@@ -204,8 +212,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     leading: const Icon(Icons.person),
                     title: const Text('Profile'),
                     onTap: () {
-                      // Navigate to Profile
                       Navigator.pop(context);
+                      Navigator.pushNamed(context, '/profile');
                     },
                   ),
                   ListTile(

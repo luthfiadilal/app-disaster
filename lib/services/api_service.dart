@@ -115,7 +115,7 @@ class ApiService {
       for (var path in imagePaths) {
         formData.files.add(
           MapEntry(
-            'images[]', // Array key for multiple images
+            'images', // Changed from images[] to match backend upload.array('images')
             await MultipartFile.fromFile(path),
           ),
         );
@@ -127,6 +127,99 @@ class ApiService {
     } on DioException catch (e) {
       throw Exception(
         e.response?.data['message'] ?? 'Failed to create report: $e',
+      );
+    }
+  }
+
+  // Get Profile
+  Future<Map<String, dynamic>> getProfile() async {
+    try {
+      final response = await _dio.get('/auth/profile');
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data['data'];
+      }
+      throw Exception('Failed to load profile');
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'Failed to load profile');
+    }
+  }
+
+  // Update Profile
+  Future<Response> updateProfile(
+    Map<String, dynamic> data,
+    String? imagePath,
+  ) async {
+    try {
+      final formData = FormData.fromMap(data);
+
+      if (imagePath != null && imagePath.isNotEmpty) {
+        formData.files.add(
+          MapEntry('avatar', await MultipartFile.fromFile(imagePath)),
+        );
+      }
+
+      final response = await _dio.put('/users/profile', data: formData);
+      return response;
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to update profile',
+      );
+    }
+  }
+
+  // --- Category Management (Admin) ---
+
+  // Create Category
+  Future<bool> createCategory(String name, String? iconPath) async {
+    try {
+      final formData = FormData.fromMap({'name': name});
+
+      if (iconPath != null && iconPath.isNotEmpty) {
+        formData.files.add(
+          MapEntry('icon', await MultipartFile.fromFile(iconPath)),
+        );
+      }
+
+      final response = await _dio.post('/disaster/categories', data: formData);
+      return response.statusCode == 200 || response.statusCode == 201;
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to create category',
+      );
+    }
+  }
+
+  // Update Category
+  Future<bool> updateCategory(int id, String name, String? iconPath) async {
+    try {
+      final formData = FormData.fromMap({'name': name});
+
+      if (iconPath != null && iconPath.isNotEmpty) {
+        formData.files.add(
+          MapEntry('icon', await MultipartFile.fromFile(iconPath)),
+        );
+      }
+
+      final response = await _dio.put(
+        '/disaster/categories/$id',
+        data: formData,
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to update category',
+      );
+    }
+  }
+
+  // Delete Category
+  Future<bool> deleteCategory(int id) async {
+    try {
+      final response = await _dio.delete('/disaster/categories/$id');
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to delete category',
       );
     }
   }

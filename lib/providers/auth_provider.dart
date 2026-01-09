@@ -121,4 +121,46 @@ class AuthProvider with ChangeNotifier {
     _apiService.setToken(null);
     notifyListeners();
   }
+
+  /// Fetches the latest user profile data
+  Future<void> fetchProfile() async {
+    try {
+      final userData = await _apiService.getProfile();
+      _user = UserModel.fromJson(userData);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error fetching profile: $e');
+      rethrow;
+    }
+  }
+
+  /// Updates user profile
+  Future<bool> updateProfile(
+    Map<String, dynamic> data,
+    String? imagePath,
+  ) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.updateProfile(data, imagePath);
+
+      if (response.statusCode == 200) {
+        // Refresh profile data after successful update
+        await fetchProfile();
+
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
 }

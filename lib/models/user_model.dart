@@ -11,6 +11,7 @@ class UserModel {
   final String? accountStatus;
   final String? role;
   final String? createdAt;
+  final String? avatarUrl;
 
   UserModel({
     this.id,
@@ -25,6 +26,7 @@ class UserModel {
     this.accountStatus,
     this.role,
     this.createdAt,
+    this.avatarUrl,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -42,6 +44,7 @@ class UserModel {
       accountStatus: json['account_status'],
       role: json['role'],
       createdAt: json['created_at'],
+      avatarUrl: json['avatar_url'],
     );
   }
 
