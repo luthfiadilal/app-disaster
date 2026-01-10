@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import '../models/disaster_category_model.dart';
+import '../models/disaster_report_model.dart';
+import '../models/region_risk_model.dart';
 
 class ApiService {
   final Dio _dio = Dio();
@@ -220,6 +222,59 @@ class ApiService {
     } on DioException catch (e) {
       throw Exception(
         e.response?.data['message'] ?? 'Failed to delete category',
+      );
+    }
+  }
+
+  // --- Disaster Report Management (Admin) ---
+
+  // Get All Disaster Reports
+  Future<List<DisasterReport>> getAllDisasterReports() async {
+    try {
+      final response = await _dio.get('/disaster');
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'];
+        return data.map((json) => DisasterReport.fromJson(json)).toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to load disaster reports',
+      );
+    }
+  }
+
+  // --- Region Risk & Map ---
+
+  // Get Region Risks
+  Future<List<RegionRisk>> getRegionRisks() async {
+    try {
+      final response = await _dio.get('/disaster/risks');
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'];
+        return data.map((json) => RegionRisk.fromJson(json)).toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to load region risks',
+      );
+    }
+  }
+
+  // Get Reports by Region
+  Future<List<DisasterReport>> getReportsByRegion(int regionId) async {
+    try {
+      final response = await _dio.get('/disaster/region/$regionId/reports');
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'];
+        return data.map((json) => DisasterReport.fromJson(json)).toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ??
+            'Failed to load reports for region $regionId',
       );
     }
   }

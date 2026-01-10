@@ -14,6 +14,7 @@ import 'views/profile/profile_screen.dart';
 import 'views/profile/edit_profile_screen.dart';
 import 'views/admin/category_management_screen.dart';
 import 'views/admin/add_edit_category_screen.dart';
+import 'views/admin/admin_report_list_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -47,6 +48,7 @@ class MyApp extends StatelessWidget {
           '/edit-profile': (context) => const EditProfileScreen(),
           '/manage-categories': (context) => const CategoryManagementScreen(),
           '/manage-categories/add': (context) => const AddEditCategoryScreen(),
+          '/manage-reports': (context) => const AdminReportListScreen(),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/create-report') {
