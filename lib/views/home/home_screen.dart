@@ -9,7 +9,10 @@ import '../../providers/auth_provider.dart';
 import '../../models/region_risk_model.dart';
 import '../../models/disaster_report_model.dart';
 import '../../services/api_service.dart';
-import 'package:intl/intl.dart';
+// import 'package:intl/intl.dart';
+import '../../views/widgets/disaster_report_card.dart';
+import '../../views/reports/user_reports_screen.dart';
+// import 'disaster_detail_screen.dart';
 
 // Helper class to transfer parsed data from Isolate
 class RenderableRegion {
@@ -361,6 +364,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.pop(context); // Close drawer
                     },
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.assignment),
+                    title: const Text('Laporan Saya'),
+                    onTap: () {
+                      Navigator.pop(context); // Close drawer
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              UserReportsScreen(apiService: _apiService),
+                        ),
+                      );
+                    },
+                  ),
                   if (user?.role == 'admin') ...[
                     const Divider(),
                     const Padding(
@@ -394,20 +411,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () {
                         // Navigate to Manajemen Region
                         Navigator.pop(context);
-                      },
-                    ),
-                  ] else ...[
-                    // User Role
-                    ListTile(
-                      leading: const Icon(Icons.history),
-                      title: const Text('Riwayat Laporan'),
-                      onTap: () {
-                        // Navigate to Riwayat Laporan
-                        Navigator.pop(context);
-                        Navigator.pushNamed(
-                          context,
-                          '/profile',
-                        ); // Redirect to profile/history if structured there
                       },
                     ),
                   ],
@@ -640,23 +643,7 @@ class _RegionReportsSheetState extends State<RegionReportsSheet> {
                     itemCount: _reports.length,
                     itemBuilder: (context, index) {
                       final report = _reports[index];
-                      return Card(
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: report.category?.iconUrl != null
-                                ? NetworkImage(report.category!.iconUrl!)
-                                : null,
-                            child: report.category?.iconUrl == null
-                                ? const Icon(Icons.warning)
-                                : null,
-                          ),
-                          title: Text(report.title),
-                          subtitle: Text(report.status),
-                          trailing: Text(
-                            DateFormat('dd MMM').format(report.incidentTime),
-                          ),
-                        ),
-                      );
+                      return DisasterReportCard(report: report);
                     },
                   ),
           ),

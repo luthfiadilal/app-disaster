@@ -228,10 +228,24 @@ class ApiService {
 
   // --- Disaster Report Management (Admin) ---
 
-  // Get All Disaster Reports
-  Future<List<DisasterReport>> getAllDisasterReports() async {
+  // Get All Disaster Reports (with Filters)
+  Future<List<DisasterReport>> getAllDisasterReports({
+    int? categoryId,
+    String? severity,
+    String? status,
+    int? regionId,
+  }) async {
     try {
-      final response = await _dio.get('/disaster');
+      final Map<String, dynamic> queryParams = {};
+      if (categoryId != null) queryParams['category_id'] = categoryId;
+      if (severity != null) queryParams['severity'] = severity;
+      if (status != null) queryParams['status'] = status;
+      if (regionId != null) queryParams['region_id'] = regionId;
+
+      final response = await _dio.get(
+        '/disaster',
+        queryParameters: queryParams,
+      );
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List<dynamic> data = response.data['data'];
         return data.map((json) => DisasterReport.fromJson(json)).toList();
@@ -240,6 +254,22 @@ class ApiService {
     } on DioException catch (e) {
       throw Exception(
         e.response?.data['message'] ?? 'Failed to load disaster reports',
+      );
+    }
+  }
+
+  // Get My Reports
+  Future<List<DisasterReport>> getMyReports() async {
+    try {
+      final response = await _dio.get('/disaster/my-reports');
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'];
+        return data.map((json) => DisasterReport.fromJson(json)).toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to load my reports',
       );
     }
   }
