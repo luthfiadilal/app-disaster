@@ -364,20 +364,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.pop(context); // Close drawer
                     },
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.assignment),
-                    title: const Text('Laporan Saya'),
-                    onTap: () {
-                      Navigator.pop(context); // Close drawer
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              UserReportsScreen(apiService: _apiService),
-                        ),
-                      );
-                    },
-                  ),
+                  if (user?.role != 'admin')
+                    ListTile(
+                      leading: const Icon(Icons.assignment),
+                      title: const Text('Laporan Saya'),
+                      onTap: () {
+                        Navigator.pop(context); // Close drawer
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                UserReportsScreen(apiService: _apiService),
+                          ),
+                        );
+                      },
+                    ),
                   if (user?.role == 'admin') ...[
                     const Divider(),
                     const Padding(
@@ -403,14 +404,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () {
                         Navigator.pop(context);
                         Navigator.pushNamed(context, '/manage-categories');
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.map),
-                      title: const Text('Manajemen Region'),
-                      onTap: () {
-                        // Navigate to Manajemen Region
-                        Navigator.pop(context);
                       },
                     ),
                   ],

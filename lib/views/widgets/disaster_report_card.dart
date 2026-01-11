@@ -5,11 +5,13 @@ import '../home/disaster_detail_screen.dart';
 class DisasterReportCard extends StatelessWidget {
   final DisasterReport report;
   final bool showStatus;
+  final VoidCallback? onEdit;
 
   const DisasterReportCard({
     super.key,
     required this.report,
     this.showStatus = false,
+    this.onEdit,
   });
 
   @override
@@ -78,6 +80,20 @@ class DisasterReportCard extends StatelessWidget {
                         if (showStatus) ...[
                           const SizedBox(width: 4),
                           _buildStatusBadge(report.status),
+                        ],
+                        if (onEdit != null) ...[
+                          const SizedBox(width: 4),
+                          InkWell(
+                            onTap: onEdit,
+                            child: const Padding(
+                              padding: EdgeInsets.all(4.0),
+                              child: Icon(
+                                Icons.edit,
+                                size: 16,
+                                color: Colors.blueGrey,
+                              ),
+                            ),
+                          ),
                         ],
                       ],
                     ),

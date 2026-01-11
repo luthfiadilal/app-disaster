@@ -37,7 +37,6 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
     'menunggu',
     'terverifikasi',
     'dalam_pengerjaan',
-    'selesai',
     'ditolak',
   ];
 
@@ -183,6 +182,8 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
                         return DisasterReportCard(
                           report: _reports[index],
                           showStatus: true,
+                          onEdit: () =>
+                              _showUpdateStatusDialog(context, _reports[index]),
                         );
                       },
                     ),
@@ -577,5 +578,134 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
         .split(' ')
         .map((str) => str[0].toUpperCase() + str.substring(1))
         .join(' ');
+  }
+
+  void _showUpdateStatusDialog(BuildContext context, DisasterReport report) {
+    // statusController removed as it was unused
+    final notesController = TextEditingController();
+    String selectedStatus = report.status;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Update Status Laporan',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedStatus,
+                decoration: _inputDecoration('Status'),
+                items: _statusOptions
+                    .where((s) => s != 'Semua')
+                    .map(
+                      (s) => DropdownMenuItem(
+                        value: s,
+                        child: Text(_formatLabel(s)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    selectedStatus = val;
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: notesController,
+                decoration: _inputDecoration('Catatan / Alasan Penolakan'),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    _updateReportStatus(
+                      report.id,
+                      selectedStatus,
+                      notesController.text,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Simpan Perubahan',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _updateReportStatus(int id, String status, String notes) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final success = await _apiService.updateDisasterReport(
+        id,
+        status: status,
+        description: status != 'ditolak'
+            ? null
+            : null, // Don't overwrite description unless intended
+        rejectionReason: status == 'ditolak' ? notes : null,
+      );
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Status berhasil diperbarui')),
+          );
+          _fetchReports(); // Refresh data
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gagal memperbarui status')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
   }
 }

@@ -258,6 +258,27 @@ class ApiService {
     }
   }
 
+  // Update Disaster Report
+  Future<bool> updateDisasterReport(
+    int id, {
+    required String status,
+    String? description,
+    String? rejectionReason,
+  }) async {
+    try {
+      final Map<String, dynamic> data = {'status': status};
+      if (description != null) data['description'] = description;
+      if (rejectionReason != null) data['rejection_reason'] = rejectionReason;
+
+      final response = await _dio.put('/disaster/$id', data: data);
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['message'] ?? 'Failed to update report status',
+      );
+    }
+  }
+
   // Get My Reports
   Future<List<DisasterReport>> getMyReports() async {
     try {
