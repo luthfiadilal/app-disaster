@@ -530,17 +530,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     backgroundColor: Colors.white,
                     child: const Icon(Icons.my_location, color: Colors.blue),
                   ),
-                  const SizedBox(height: 10),
-                  FloatingActionButton.extended(
-                    heroTag: 'report_btn',
-                    onPressed: _startPickingLocation,
-                    backgroundColor: Colors.red,
-                    icon: const Icon(Icons.add_alert, color: Colors.white),
-                    label: const Text(
-                      'Buat Laporan',
-                      style: TextStyle(color: Colors.white),
+                  if (user?.role != 'admin') ...[
+                    const SizedBox(height: 10),
+                    FloatingActionButton.extended(
+                      heroTag: 'report_btn',
+                      onPressed: _startPickingLocation,
+                      backgroundColor: Colors.red,
+                      icon: const Icon(Icons.add_alert, color: Colors.white),
+                      label: const Text(
+                        'Buat Laporan',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 10),
                 ],
                 FloatingActionButton(
