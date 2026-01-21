@@ -270,6 +270,42 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _startPickingLocation() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.user;
+
+    // Cek apakah user sudah login
+    if (user == null) {
+      // Tampilkan dialog jika belum login
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Login Diperlukan'),
+            content: const Text(
+              'Anda harus login terlebih dahulu untuk membuat laporan bencana.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Tutup dialog
+                },
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Tutup dialog
+                  Navigator.pushNamed(context, '/login'); // Ke halaman login
+                },
+                child: const Text('Login'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
+    // Jika sudah login, lanjutkan proses picking location
     setState(() {
       _isPickingLocation = true;
       _isFabExpanded = false;
@@ -334,29 +370,54 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  UserAccountsDrawerHeader(
-                    decoration: const BoxDecoration(color: Colors.blueAccent),
-                    accountName: Text(user?.fullName ?? 'User'),
-                    accountEmail: Text(user?.email ?? 'email@example.com'),
-                    currentAccountPicture: CircleAvatar(
-                      backgroundColor: Colors.white,
-                      backgroundImage:
-                          user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
-                          ? NetworkImage(user.avatarUrl!)
-                          : null,
-                      child: user?.avatarUrl == null || user!.avatarUrl!.isEmpty
-                          ? Text(
-                              (user?.fullName ?? 'U')
-                                  .substring(0, 1)
-                                  .toUpperCase(),
-                              style: const TextStyle(
-                                fontSize: 24,
-                                color: Colors.blueAccent,
-                              ),
-                            )
-                          : null,
+                  // Tampilkan header berbeda untuk user yang belum login
+                  if (user != null)
+                    UserAccountsDrawerHeader(
+                      decoration: const BoxDecoration(color: Colors.blueAccent),
+                      accountName: Text(user.fullName),
+                      accountEmail: Text(user.email),
+                      currentAccountPicture: CircleAvatar(
+                        backgroundColor: Colors.white,
+                        backgroundImage:
+                            user.avatarUrl != null && user.avatarUrl!.isNotEmpty
+                            ? NetworkImage(user.avatarUrl!)
+                            : null,
+                        child: user.avatarUrl == null || user.avatarUrl!.isEmpty
+                            ? Text(
+                                user.fullName.substring(0, 1).toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  color: Colors.blueAccent,
+                                ),
+                              )
+                            : null,
+                      ),
+                    )
+                  else
+                    DrawerHeader(
+                      decoration: const BoxDecoration(color: Colors.blueAccent),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.account_circle,
+                            size: 80,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'ZONARA',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+
+                  // Menu Home - selalu ditampilkan
                   ListTile(
                     leading: const Icon(Icons.home),
                     title: const Text('Home'),
@@ -364,68 +425,85 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.pop(context); // Close drawer
                     },
                   ),
-                  if (user?.role != 'admin')
+
+                  // Jika belum login, hanya tampilkan menu Login
+                  if (user == null)
                     ListTile(
-                      leading: const Icon(Icons.assignment),
-                      title: const Text('Laporan Saya'),
+                      leading: const Icon(Icons.login),
+                      title: const Text('Login'),
                       onTap: () {
-                        Navigator.pop(context); // Close drawer
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                UserReportsScreen(apiService: _apiService),
-                          ),
-                        );
-                      },
-                    ),
-                  if (user?.role == 'admin') ...[
-                    const Divider(),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16, top: 8, bottom: 8),
-                      child: Text(
-                        'Admin Menu',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.description),
-                      title: const Text('Manajemen Laporan'),
-                      onTap: () {
-                        // Navigate to Manajemen Laporan
                         Navigator.pop(context);
-                        Navigator.pushNamed(context, '/manage-reports');
+                        Navigator.pushNamed(context, '/login');
                       },
                     ),
 
+                  // Menu untuk user yang sudah login
+                  if (user != null) ...[
+                    if (user.role != 'admin')
+                      ListTile(
+                        leading: const Icon(Icons.assignment),
+                        title: const Text('Laporan Saya'),
+                        onTap: () {
+                          Navigator.pop(context); // Close drawer
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  UserReportsScreen(apiService: _apiService),
+                            ),
+                          );
+                        },
+                      ),
+                    if (user.role == 'admin') ...[
+                      const Divider(),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 16, top: 8, bottom: 8),
+                        child: Text(
+                          'Admin Menu',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.description),
+                        title: const Text('Manajemen Laporan'),
+                        onTap: () {
+                          // Navigate to Manajemen Laporan
+                          Navigator.pop(context);
+                          Navigator.pushNamed(context, '/manage-reports');
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(
+                          Icons.category,
+                          color: Colors.orange,
+                        ),
+                        title: const Text('Manajemen Kategori'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushNamed(context, '/manage-categories');
+                        },
+                      ),
+                    ],
+                    const Divider(),
                     ListTile(
-                      leading: const Icon(Icons.category, color: Colors.orange),
-                      title: const Text('Manajemen Kategori'),
+                      leading: const Icon(Icons.person),
+                      title: const Text('Profile'),
                       onTap: () {
                         Navigator.pop(context);
-                        Navigator.pushNamed(context, '/manage-categories');
+                        Navigator.pushNamed(context, '/profile');
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.exit_to_app),
+                      title: const Text('Logout'),
+                      onTap: () {
+                        authProvider.logout();
+                        Navigator.of(
+                          context,
+                        ).pushNamedAndRemoveUntil('/home', (route) => false);
                       },
                     ),
                   ],
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.person),
-                    title: const Text('Profile'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, '/profile');
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.exit_to_app),
-                    title: const Text('Logout'),
-                    onTap: () {
-                      authProvider.logout();
-                      Navigator.of(
-                        context,
-                      ).pushNamedAndRemoveUntil('/login', (route) => false);
-                    },
-                  ),
                 ],
               ),
             ),
@@ -530,7 +608,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     backgroundColor: Colors.white,
                     child: const Icon(Icons.my_location, color: Colors.blue),
                   ),
-                  if (user?.role != 'admin') ...[
+                  // Tampilkan button Buat Laporan untuk semua user kecuali admin
+                  if (user == null || user.role != 'admin') ...[
                     const SizedBox(height: 10),
                     FloatingActionButton.extended(
                       heroTag: 'report_btn',
