@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../models/disaster_category_model.dart';
 import '../models/disaster_report_model.dart';
 import '../models/region_risk_model.dart';
@@ -82,7 +83,7 @@ class ApiService {
     }
   }
 
-  // Get Categories
+  // Get Categories (Public endpoint - no authentication required)
   Future<List<DisasterCategory>> getCategories() async {
     try {
       final response = await _dio.get('/disaster/categories');
@@ -228,7 +229,7 @@ class ApiService {
 
   // --- Disaster Report Management (Admin) ---
 
-  // Get All Disaster Reports (with Filters)
+  // Get All Disaster Reports (with Filters) - Public endpoint
   Future<List<DisasterReport>> getAllDisasterReports({
     int? categoryId,
     String? severity,
@@ -295,25 +296,39 @@ class ApiService {
     }
   }
 
-  // --- Region Risk & Map ---
+  // --- Region Risk & Map (Public endpoints) ---
 
-  // Get Region Risks
+  // Get Region Risks - Public endpoint
   Future<List<RegionRisk>> getRegionRisks() async {
     try {
+      debugPrint('[ApiService] Fetching region risks from /disaster/risks');
       final response = await _dio.get('/disaster/risks');
+      debugPrint(
+        '[ApiService] Region risks response status: ${response.statusCode}',
+      );
+      debugPrint('[ApiService] Region risks response data: ${response.data}');
+
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List<dynamic> data = response.data['data'];
+        debugPrint('[ApiService] Parsing ${data.length} region risks');
         return data.map((json) => RegionRisk.fromJson(json)).toList();
       }
       return [];
     } on DioException catch (e) {
+      debugPrint('[ApiService] DioException: ${e.type}');
+      debugPrint('[ApiService] Error response: ${e.response?.data}');
+      debugPrint('[ApiService] Error message: ${e.message}');
       throw Exception(
-        e.response?.data['message'] ?? 'Failed to load region risks',
+        e.response?.data['message'] ??
+            'Failed to load region risks: ${e.message}',
       );
+    } catch (e) {
+      debugPrint('[ApiService] Unexpected error: $e');
+      throw Exception('Failed to load region risks: $e');
     }
   }
 
-  // Get Reports by Region
+  // Get Reports by Region - Public endpoint
   Future<List<DisasterReport>> getReportsByRegion(int regionId) async {
     try {
       final response = await _dio.get('/disaster/region/$regionId/reports');

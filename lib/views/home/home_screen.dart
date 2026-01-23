@@ -113,6 +113,10 @@ class _HomeScreenState extends State<HomeScreen> {
   List<RenderableRegion> _renderableRegions = [];
   bool _isLoadingRisks = true;
 
+  // Disaster report markers from selected region
+  List<DisasterReport> _disasterReports = [];
+  bool _showDisasterMarkers = false;
+
   @override
   void initState() {
     super.initState();
@@ -120,11 +124,18 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchRisks();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Set token from AuthProvider to local ApiService instance
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.token != null) {
+      _apiService.setToken(authProvider.token);
+    }
+  }
+
   Future<void> _fetchRisks() async {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      _apiService.setToken(authProvider.token);
-
       try {
         final risks = await _apiService.getRegionRisks();
 
@@ -174,28 +185,50 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _onPolygonTap(RegionRisk risk) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.5,
-        minChildSize: 0.3,
-        maxChildSize: 0.9,
-        expand: false,
-        builder: (context, scrollController) {
-          return RegionReportsSheet(
-            regionId: risk.regionId,
-            regionName: risk.regionName,
-            scrollController: scrollController,
-            apiService: _apiService,
-          );
-        },
-      ),
-    );
+  void _onPolygonTap(RegionRisk risk) async {
+    // Fetch disaster reports for this region
+    try {
+      final reports = await _apiService.getReportsByRegion(risk.regionId);
+
+      // Filter hanya yang terverifikasi
+      final verifiedReports = reports
+          .where((report) => report.status == 'terverifikasi')
+          .toList();
+
+      if (mounted) {
+        setState(() {
+          _disasterReports = verifiedReports;
+          _showDisasterMarkers = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching reports for region: $e');
+    }
+
+    // Show bottom sheet
+    if (mounted) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (context) => DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return RegionReportsSheet(
+              regionId: risk.regionId,
+              regionName: risk.regionName,
+              scrollController: scrollController,
+              apiService: _apiService,
+            );
+          },
+        ),
+      );
+    }
   }
 
   bool _isPointInPolygon(LatLng point, List<LatLng> polygon) {
@@ -545,6 +578,89 @@ class _HomeScreenState extends State<HomeScreen> {
                   }).toList(),
                 ),
 
+              // Disaster Report Markers (White tiles)
+              if (_showDisasterMarkers)
+                MarkerLayer(
+                  markers: _disasterReports.map((report) {
+                    // Parse latitude and longitude
+                    double? lat = double.tryParse(report.latitude.toString());
+                    double? lng = double.tryParse(report.longitude.toString());
+
+                    if (lat != null && lng != null) {
+                      return Marker(
+                        point: LatLng(lat, lng),
+                        width: 40,
+                        height: 40,
+                        child: GestureDetector(
+                          onTap: () {
+                            // Show disaster report details
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text(report.title),
+                                content: SingleChildScrollView(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text('Event: ${report.eventName ?? "-"}'),
+                                      const SizedBox(height: 8),
+                                      Text('Severity: ${report.severity}'),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Description: ${report.description}',
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Location: ${report.address ?? "-"}',
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text('Status: ${report.status}'),
+                                    ],
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Close'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.red, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  spreadRadius: 2,
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.warning,
+                              color: Colors.red,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    // Return empty marker if coordinates are invalid
+                    return Marker(
+                      point: const LatLng(0, 0),
+                      width: 0,
+                      height: 0,
+                      child: const SizedBox.shrink(),
+                    );
+                  }).toList(),
+                ),
+
               if (_hasLocation)
                 MarkerLayer(
                   markers: [
@@ -595,6 +711,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
         ],
       ),
+      // SECTION FAB
       floatingActionButton: _isPickingLocation
           ? null
           : Column(
@@ -608,20 +725,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     backgroundColor: Colors.white,
                     child: const Icon(Icons.my_location, color: Colors.blue),
                   ),
-                  // Tampilkan button Buat Laporan untuk semua user kecuali admin
-                  if (user == null || user.role != 'admin') ...[
-                    const SizedBox(height: 10),
-                    FloatingActionButton.extended(
-                      heroTag: 'report_btn',
-                      onPressed: _startPickingLocation,
-                      backgroundColor: Colors.red,
-                      icon: const Icon(Icons.add_alert, color: Colors.white),
-                      label: const Text(
-                        'Buat Laporan',
-                        style: TextStyle(color: Colors.white),
-                      ),
+
+                  const SizedBox(height: 10),
+                  FloatingActionButton.extended(
+                    heroTag: 'report_btn',
+                    onPressed: _startPickingLocation,
+                    backgroundColor: Colors.red,
+                    icon: const Icon(Icons.add_alert, color: Colors.white),
+                    label: const Text(
+                      'Buat Laporan',
+                      style: TextStyle(color: Colors.white),
                     ),
-                  ],
+                  ),
                   const SizedBox(height: 10),
                 ],
                 FloatingActionButton(
@@ -659,7 +774,20 @@ class RegionReportsSheet extends StatefulWidget {
 
 class _RegionReportsSheetState extends State<RegionReportsSheet> {
   List<DisasterReport> _reports = [];
+  List<DisasterReport> _filteredReports = [];
   bool _loading = true;
+
+  // Filter states
+  String? _selectedDistrict;
+  String? _selectedVillage;
+  int? _selectedCategory;
+  String? _selectedSeverity;
+
+  // Filter options
+  List<String> _districts = [];
+  List<String> _villages = [];
+  List<int> _categoryIds = [];
+  List<String> _severities = [];
 
   @override
   void initState() {
@@ -673,15 +801,81 @@ class _RegionReportsSheetState extends State<RegionReportsSheet> {
         widget.regionId,
       );
       if (mounted) {
+        // Filter hanya yang terverifikasi
+        final verifiedReports = reports
+            .where((report) => report.status == 'terverifikasi')
+            .toList();
+
         setState(() {
-          _reports = reports;
+          _reports = verifiedReports;
+          _filteredReports = verifiedReports;
           _loading = false;
+          _buildFilterOptions();
         });
       }
     } catch (e) {
       debugPrint('Error fetching reports by region: $e');
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _buildFilterOptions() {
+    // Extract unique values for filters
+    _districts =
+        _reports
+            .map((r) => r.district)
+            .where((d) => d != null && d.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+
+    _villages =
+        _reports
+            .map((r) => r.village)
+            .where((v) => v != null && v.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+
+    _categoryIds = _reports.map((r) => r.categoryId).toSet().toList()..sort();
+
+    _severities =
+        _reports
+            .map((r) => r.severity)
+            .where((s) => s != null && s.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+  }
+
+  void _applyFilters() {
+    setState(() {
+      _filteredReports = _reports.where((report) {
+        bool matchesDistrict =
+            _selectedDistrict == null || report.district == _selectedDistrict;
+        bool matchesVillage =
+            _selectedVillage == null || report.village == _selectedVillage;
+        bool matchesCategory =
+            _selectedCategory == null || report.categoryId == _selectedCategory;
+        bool matchesSeverity =
+            _selectedSeverity == null || report.severity == _selectedSeverity;
+
+        return matchesDistrict &&
+            matchesVillage &&
+            matchesCategory &&
+            matchesSeverity;
+      }).toList();
+    });
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _selectedDistrict = null;
+      _selectedVillage = null;
+      _selectedCategory = null;
+      _selectedSeverity = null;
+      _filteredReports = _reports;
+    });
   }
 
   @override
@@ -702,21 +896,181 @@ class _RegionReportsSheetState extends State<RegionReportsSheet> {
               ),
             ),
           ),
-          Text(
-            'Laporan di ${widget.regionName}',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  'Laporan di ${widget.regionName}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (!_loading && _reports.isNotEmpty)
+                TextButton.icon(
+                  onPressed: _clearFilters,
+                  icon: const Icon(Icons.clear_all, size: 18),
+                  label: const Text('Reset'),
+                ),
+            ],
           ),
           const SizedBox(height: 10),
+
+          // Filter Section
+          if (!_loading && _reports.isNotEmpty) ...[
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  // District Filter
+                  if (_districts.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButton<String>(
+                        hint: const Text('Kecamatan'),
+                        value: _selectedDistrict,
+                        underline: const SizedBox(),
+                        items: _districts.map((district) {
+                          return DropdownMenuItem(
+                            value: district,
+                            child: Text(
+                              district,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() => _selectedDistrict = value);
+                          _applyFilters();
+                        },
+                      ),
+                    ),
+
+                  // Village Filter
+                  if (_villages.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButton<String>(
+                        hint: const Text('Kelurahan'),
+                        value: _selectedVillage,
+                        underline: const SizedBox(),
+                        items: _villages.map((village) {
+                          return DropdownMenuItem(
+                            value: village,
+                            child: Text(
+                              village,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() => _selectedVillage = value);
+                          _applyFilters();
+                        },
+                      ),
+                    ),
+
+                  // Category Filter
+                  if (_categoryIds.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButton<int>(
+                        hint: const Text('Kategori'),
+                        value: _selectedCategory,
+                        underline: const SizedBox(),
+                        items: _categoryIds.map((catId) {
+                          // Find category name from first report with this ID
+                          final categoryName =
+                              _reports
+                                  .firstWhere((r) => r.categoryId == catId)
+                                  .category
+                                  ?.name ??
+                              'Category $catId';
+                          return DropdownMenuItem(
+                            value: catId,
+                            child: Text(
+                              categoryName,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() => _selectedCategory = value);
+                          _applyFilters();
+                        },
+                      ),
+                    ),
+
+                  // Severity Filter
+                  if (_severities.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButton<String>(
+                        hint: const Text('Severity'),
+                        value: _selectedSeverity,
+                        underline: const SizedBox(),
+                        items: _severities.map((severity) {
+                          return DropdownMenuItem(
+                            value: severity,
+                            child: Text(
+                              severity,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() => _selectedSeverity = value);
+                          _applyFilters();
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Menampilkan ${_filteredReports.length} dari ${_reports.length} laporan',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+            const Divider(),
+          ],
+
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _reports.isEmpty
                 ? const Center(child: Text('Tidak ada laporan di area ini.'))
+                : _filteredReports.isEmpty
+                ? const Center(
+                    child: Text('Tidak ada laporan yang sesuai filter.'),
+                  )
                 : ListView.builder(
                     controller: widget.scrollController,
-                    itemCount: _reports.length,
+                    itemCount: _filteredReports.length,
                     itemBuilder: (context, index) {
-                      final report = _reports[index];
+                      final report = _filteredReports[index];
                       return DisasterReportCard(report: report);
                     },
                   ),

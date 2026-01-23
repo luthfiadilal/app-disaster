@@ -16,19 +16,27 @@ import 'views/admin/category_management_screen.dart';
 import 'views/admin/add_edit_category_screen.dart';
 import 'views/admin/admin_report_list_screen.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize AuthProvider and load stored token
+  final authProvider = AuthProvider();
+  await authProvider.initializeAuth();
+
+  runApp(MyApp(authProvider: authProvider));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final AuthProvider authProvider;
+
+  const MyApp({super.key, required this.authProvider});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => PostController()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider.value(value: authProvider),
       ],
       child: MaterialApp(
         title: 'ZONARA',
