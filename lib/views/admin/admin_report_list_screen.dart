@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../models/disaster_report_model.dart';
 import '../../models/disaster_category_model.dart';
 import '../../models/region_risk_model.dart';
@@ -21,6 +22,18 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
   List<DisasterReport> _reports = [];
   bool _isLoading = true;
 
+  // Filtered reports (client-side filtering for incident_date)
+  List<DisasterReport> get _filteredReports {
+    if (_selectedIncidentDate == null) {
+      return _reports;
+    }
+    return _reports.where((report) {
+      return report.incidentTime.year == _selectedIncidentDate!.year &&
+          report.incidentTime.month == _selectedIncidentDate!.month &&
+          report.incidentTime.day == _selectedIncidentDate!.day;
+    }).toList();
+  }
+
   // Filter Data Sources
   List<DisasterCategory> _categories = [];
   List<RegionRisk> _regions =
@@ -31,6 +44,7 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
   String _selectedSeverity = 'Semua';
   int? _selectedCategoryId; // null means 'Semua'
   int? _selectedRegionId; // null means 'Semua'
+  DateTime? _selectedIncidentDate; // null means 'Semua' (date only, no time)
 
   final List<String> _statusOptions = [
     'Semua',
@@ -120,7 +134,8 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
       _selectedStatus != 'Semua' ||
       _selectedSeverity != 'Semua' ||
       _selectedCategoryId != null ||
-      _selectedRegionId != null;
+      _selectedRegionId != null ||
+      _selectedIncidentDate != null;
 
   void _resetFilters() {
     setState(() {
@@ -128,6 +143,7 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
       _selectedSeverity = 'Semua';
       _selectedCategoryId = null;
       _selectedRegionId = null;
+      _selectedIncidentDate = null;
     });
     _fetchReports();
   }
@@ -150,7 +166,7 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _reports.isEmpty
+                : _filteredReports.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -177,13 +193,15 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
                     onRefresh: _fetchReports,
                     child: ListView.builder(
                       padding: const EdgeInsets.all(16),
-                      itemCount: _reports.length,
+                      itemCount: _filteredReports.length,
                       itemBuilder: (context, index) {
                         return DisasterReportCard(
-                          report: _reports[index],
+                          report: _filteredReports[index],
                           showStatus: true,
-                          onEdit: () =>
-                              _showUpdateStatusDialog(context, _reports[index]),
+                          onEdit: () => _showUpdateStatusDialog(
+                            context,
+                            _filteredReports[index],
+                          ),
                         );
                       },
                     ),
@@ -306,6 +324,14 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
                         _fetchReports();
                       },
                     ),
+                  if (_selectedIncidentDate != null)
+                    _buildFilterChip(
+                      'Tanggal: ${DateFormat('dd/MM/yyyy').format(_selectedIncidentDate!)}',
+                      () {
+                        setState(() => _selectedIncidentDate = null);
+                        _fetchReports();
+                      },
+                    ),
                 ],
               ),
             ),
@@ -358,6 +384,7 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
         String tempSeverity = _selectedSeverity;
         int? tempCategoryId = _selectedCategoryId;
         int? tempRegionId = _selectedRegionId;
+        DateTime? tempIncidentDate = _selectedIncidentDate;
 
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -401,6 +428,7 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
                                 tempSeverity = 'Semua';
                                 tempCategoryId = null;
                                 tempRegionId = null;
+                                tempIncidentDate = null;
                               });
                             },
                             child: const Text('Reset'),
@@ -476,6 +504,70 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
                               setModalState(() => tempRegionId = val);
                             },
                           ),
+                          const SizedBox(height: 16),
+                          _buildSectionLabel('Tanggal Kejadian'),
+                          InkWell(
+                            onTap: () async {
+                              final DateTime? picked = await showDatePicker(
+                                context: context,
+                                initialDate: tempIncidentDate ?? DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime.now(),
+                                locale: const Locale('id', 'ID'),
+                              );
+                              if (picked != null) {
+                                setModalState(() => tempIncidentDate = picked);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 16,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.calendar_today,
+                                    size: 20,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      tempIncidentDate != null
+                                          ? DateFormat(
+                                              'dd/MM/yyyy',
+                                            ).format(tempIncidentDate!)
+                                          : 'Pilih Tanggal Kejadian',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: tempIncidentDate != null
+                                            ? Colors.black87
+                                            : Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ),
+                                  if (tempIncidentDate != null)
+                                    InkWell(
+                                      onTap: () {
+                                        setModalState(
+                                          () => tempIncidentDate = null,
+                                        );
+                                      },
+                                      child: Icon(
+                                        Icons.close,
+                                        size: 18,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
                           const SizedBox(height: 100), // Space for button
                         ],
                       ),
@@ -492,6 +584,7 @@ class _AdminReportListScreenState extends State<AdminReportListScreen> {
                               _selectedSeverity = tempSeverity;
                               _selectedCategoryId = tempCategoryId;
                               _selectedRegionId = tempRegionId;
+                              _selectedIncidentDate = tempIncidentDate;
                             });
                             Navigator.pop(context);
                             _fetchReports();

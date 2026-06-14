@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../services/api_service.dart';
 import '../../models/disaster_report_model.dart';
 import '../widgets/disaster_report_card.dart';
@@ -23,6 +24,7 @@ class _UserReportsScreenState extends State<UserReportsScreen> {
   String? _selectedVillage;
   int? _selectedCategory;
   String? _selectedSeverity;
+  DateTime? _selectedIncidentDate; // Date only (no time)
 
   // Filter options
   List<String> _districts = [];
@@ -99,11 +101,17 @@ class _UserReportsScreenState extends State<UserReportsScreen> {
             _selectedCategory == null || report.categoryId == _selectedCategory;
         bool matchesSeverity =
             _selectedSeverity == null || report.severity == _selectedSeverity;
+        bool matchesIncidentDate =
+            _selectedIncidentDate == null ||
+            (report.incidentTime.year == _selectedIncidentDate!.year &&
+                report.incidentTime.month == _selectedIncidentDate!.month &&
+                report.incidentTime.day == _selectedIncidentDate!.day);
 
         return matchesDistrict &&
             matchesVillage &&
             matchesCategory &&
-            matchesSeverity;
+            matchesSeverity &&
+            matchesIncidentDate;
       }).toList();
     });
   }
@@ -114,6 +122,7 @@ class _UserReportsScreenState extends State<UserReportsScreen> {
       _selectedVillage = null;
       _selectedCategory = null;
       _selectedSeverity = null;
+      _selectedIncidentDate = null;
       _filteredReports = _allReports;
     });
   }
@@ -170,6 +179,83 @@ class _UserReportsScreenState extends State<UserReportsScreen> {
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
+                            // Incident Date Filter
+                            Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              child: InkWell(
+                                onTap: () async {
+                                  final DateTime? picked = await showDatePicker(
+                                    context: context,
+                                    initialDate:
+                                        _selectedIncidentDate ?? DateTime.now(),
+                                    firstDate: DateTime(2020),
+                                    lastDate: DateTime.now(),
+                                    locale: const Locale('id', 'ID'),
+                                  );
+                                  if (picked != null) {
+                                    setState(
+                                      () => _selectedIncidentDate = picked,
+                                    );
+                                    _applyFilters();
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.calendar_today,
+                                        size: 16,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _selectedIncidentDate != null
+                                            ? DateFormat(
+                                                'dd/MM/yyyy',
+                                              ).format(_selectedIncidentDate!)
+                                            : 'Tanggal',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      if (_selectedIncidentDate != null) ...[
+                                        const SizedBox(width: 4),
+                                        InkWell(
+                                          onTap: () {
+                                            setState(
+                                              () =>
+                                                  _selectedIncidentDate = null,
+                                            );
+                                            _applyFilters();
+                                          },
+                                          child: const Icon(
+                                            Icons.close,
+                                            size: 14,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+
                             // District Filter
                             if (_districts.isNotEmpty)
                               Container(

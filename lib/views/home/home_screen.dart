@@ -9,7 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../models/region_risk_model.dart';
 import '../../models/disaster_report_model.dart';
 import '../../services/api_service.dart';
-// import 'package:intl/intl.dart';
+import 'package:intl/intl.dart';
 import '../../views/widgets/disaster_report_card.dart';
 import '../../views/reports/user_reports_screen.dart';
 // import 'disaster_detail_screen.dart';
@@ -375,17 +375,40 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isPickingLocation ? 'Pick Location' : 'ZONARA'),
+        // Ganti Text biasa dengan Column
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start, // Rata kiri
+          children: [
+            // --- JUDUL UTAMA ---
+            Text(
+              _isPickingLocation ? 'Pick Location' : 'ZONARA',
+              style: TextStyle(
+                color: _isPickingLocation ? Colors.white : Colors.black87,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            // --- SUBTITLE (TEXT KECIL) ---
+            Text(
+              'Zona Area Waspada', // Contoh teks subtitle
+              style: TextStyle(
+                // Buat ukuran lebih kecil dan warna sedikit lebih pudar
+                color: _isPickingLocation ? Colors.white70 : Colors.black54,
+                fontSize: 15,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+
+        // Properti lainnya tetap sama
         backgroundColor: _isPickingLocation ? Colors.green : Colors.white,
         elevation: 1,
         iconTheme: IconThemeData(
           color: _isPickingLocation ? Colors.white : Colors.black87,
         ),
-        titleTextStyle: TextStyle(
-          color: _isPickingLocation ? Colors.white : Colors.black87,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
+
+        // titleTextStyle tidak lagi dibutuhkan di sini karena style sudah dipindah ke Text masing-masing
         leading: _isPickingLocation
             ? IconButton(
                 icon: const Icon(Icons.close),
@@ -782,6 +805,7 @@ class _RegionReportsSheetState extends State<RegionReportsSheet> {
   String? _selectedVillage;
   int? _selectedCategory;
   String? _selectedSeverity;
+  DateTime? _selectedIncidentDate; // Date only (no time)
 
   // Filter options
   List<String> _districts = [];
@@ -824,7 +848,7 @@ class _RegionReportsSheetState extends State<RegionReportsSheet> {
     _districts =
         _reports
             .map((r) => r.district)
-            .where((d) => d != null && d.isNotEmpty)
+            .where((d) => d.isNotEmpty)
             .toSet()
             .toList()
           ..sort();
@@ -832,7 +856,7 @@ class _RegionReportsSheetState extends State<RegionReportsSheet> {
     _villages =
         _reports
             .map((r) => r.village)
-            .where((v) => v != null && v.isNotEmpty)
+            .where((v) => v.isNotEmpty)
             .toSet()
             .toList()
           ..sort();
@@ -842,7 +866,7 @@ class _RegionReportsSheetState extends State<RegionReportsSheet> {
     _severities =
         _reports
             .map((r) => r.severity)
-            .where((s) => s != null && s.isNotEmpty)
+            .where((s) => s.isNotEmpty)
             .toSet()
             .toList()
           ..sort();
@@ -859,11 +883,17 @@ class _RegionReportsSheetState extends State<RegionReportsSheet> {
             _selectedCategory == null || report.categoryId == _selectedCategory;
         bool matchesSeverity =
             _selectedSeverity == null || report.severity == _selectedSeverity;
+        bool matchesIncidentDate =
+            _selectedIncidentDate == null ||
+            (report.incidentTime.year == _selectedIncidentDate!.year &&
+                report.incidentTime.month == _selectedIncidentDate!.month &&
+                report.incidentTime.day == _selectedIncidentDate!.day);
 
         return matchesDistrict &&
             matchesVillage &&
             matchesCategory &&
-            matchesSeverity;
+            matchesSeverity &&
+            matchesIncidentDate;
       }).toList();
     });
   }
@@ -874,6 +904,7 @@ class _RegionReportsSheetState extends State<RegionReportsSheet> {
       _selectedVillage = null;
       _selectedCategory = null;
       _selectedSeverity = null;
+      _selectedIncidentDate = null;
       _filteredReports = _reports;
     });
   }
@@ -924,6 +955,72 @@ class _RegionReportsSheetState extends State<RegionReportsSheet> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
+                  // Incident Date Filter
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: InkWell(
+                      onTap: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedIncidentDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
+                          locale: const Locale('id', 'ID'),
+                        );
+                        if (picked != null) {
+                          setState(() => _selectedIncidentDate = picked);
+                          _applyFilters();
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              size: 16,
+                              color: Colors.grey.shade600,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _selectedIncidentDate != null
+                                  ? DateFormat(
+                                      'dd/MM/yyyy',
+                                    ).format(_selectedIncidentDate!)
+                                  : 'Tanggal',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            if (_selectedIncidentDate != null) ...[
+                              const SizedBox(width: 4),
+                              InkWell(
+                                onTap: () {
+                                  setState(() => _selectedIncidentDate = null);
+                                  _applyFilters();
+                                },
+                                child: const Icon(
+                                  Icons.close,
+                                  size: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                   // District Filter
                   if (_districts.isNotEmpty)
                     Container(
